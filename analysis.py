@@ -70,11 +70,11 @@ def create_bullseye(data, prefix, title, include_apex=False):
     fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection='polar'))
     
     num_theta = 4  # 4 segments par anneau
-    num_radii = 3 if include_apex else 2  # 2 anneaux (mid, base) si on exclut l'apex
+    num_radii = 3  # Toujours inclure l'apex visuellement
     thetas = np.linspace(0, 2 * np.pi, num_theta + 1)
     
     # Labels pour les axes
-    radii_labels = ['Mid', 'Base'] if not include_apex else ['Apex', 'Mid', 'Base']
+    radii_labels = ['Apex', 'Mid', 'Base']
     theta_labels = ['Latéral', 'Antérieur', 'Septal', 'Inférieur']
     
     # Configuration des axes
@@ -86,10 +86,21 @@ def create_bullseye(data, prefix, title, include_apex=False):
     if include_apex:
         ax.set_yticks([0.5, 1.5, 2.5])
     else:
-        ax.set_yticks([0.5, 1.5])
+        ax.set_yticks([0.5, 1.5, 2.5])
     ax.set_yticklabels(radii_labels, fontsize=12)
     ax.set_ylim(0, num_radii)
     ax.tick_params(pad=20)
+    
+    # Dessiner l'apex en grisé si non inclus
+    if not include_apex:
+        for t_idx in range(num_theta):
+            ax.bar(x=thetas[t_idx], height=1, width=(2*np.pi/num_theta),
+                  bottom=0, color='lightgray', edgecolor='white',
+                  linewidth=2, alpha=0.5)
+            # Ajouter le texte "Non utilisé"
+            angle = thetas[t_idx] + np.pi/num_theta
+            ax.text(angle, 0.5, "Non utilisé", ha='center', va='center', 
+                   fontsize=8, color='gray', alpha=0.7)
     
     # Mapping des segments aux positions
     base_segments = {
@@ -106,7 +117,8 @@ def create_bullseye(data, prefix, title, include_apex=False):
         segment_mapping = {**apex_segments, **{k: (v[0]+1, v[1]) for k, v in mid_segments.items()},
                          **{k: (v[0]+2, v[1]) for k, v in base_segments.items()}}
     else:
-        segment_mapping = {**mid_segments, **base_segments}
+        segment_mapping = {**{k: (v[0]+1, v[1]) for k, v in mid_segments.items()},
+                         **{k: (v[0]+2, v[1]) for k, v in base_segments.items()}}
     
     # Calcul des valeurs min/max pour l'échelle de couleur
     values = []
@@ -150,7 +162,7 @@ def create_bullseye(data, prefix, title, include_apex=False):
     cbar = plt.colorbar(sm, ax=ax, pad=0.1, shrink=0.7)
     cbar.set_label('Valeur Moyenne VEC', rotation=270, labelpad=20, fontsize=12)
     
-    ax.set_title(title, fontsize=14, pad=25)
+    ax.set_title(title, fontsize=14, pad=45)
     plt.tight_layout()
     
     return fig
