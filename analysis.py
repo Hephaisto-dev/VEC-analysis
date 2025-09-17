@@ -75,12 +75,18 @@ def create_bullseye(data, prefix, title, include_apex=False):
     
     # Labels pour les axes
     radii_labels = ['Apex', 'Mid', 'Base']
-    theta_labels = ['Latéral', 'Antérieur', 'Septal', 'Inférieur']
+    theta_labels = ['Antérieur', 'Latéral', 'Inférieur', 'Médial']
     
-    # Configuration des axes
-    ax.set_theta_offset(np.pi / 4)  # Fait pivoter pour que 0° soit à droite
-    ax.set_theta_direction(-1)  # Met en sens horaire
-    ax.set_xticks(np.linspace(0, 2 * np.pi, num_theta, endpoint=False))
+    # Configuration des axes selon la convention cardiologique
+    ax.set_theta_offset(np.pi/2)  # 0° en haut
+    ax.set_theta_direction(-1)  # Sens horaire
+    
+    # Définir les positions angulaires pour chaque segment
+    angles = np.array([0, 90, 180, 270]) * np.pi / 180  # Conversion en radians
+    ax.set_xticks(angles)
+    
+    # Réorganiser les labels pour correspondre aux positions anatomiques
+    theta_labels = ['Antérieur', 'Latéral', 'Inférieur', 'Médial']
     ax.set_xticklabels(theta_labels, fontsize=12)
     # Ajuster les ticks en fonction du nombre d'anneaux
     if include_apex:
@@ -103,22 +109,22 @@ def create_bullseye(data, prefix, title, include_apex=False):
                    fontsize=8, color='gray', alpha=0.7)
     
     # Mapping des segments aux positions
+    # Mapping réorganisé selon l'orientation anatomique correcte
+    # L'ordre est : Antérieur (haut), Latéral (droite), Inférieur (bas), Médial/Septal (gauche)
     base_segments = {
-        'base_lat': (1, 0), 'base_ante': (1, 1), 'base_sept': (1, 2), 'base_inf': (1, 3)
+        'base_ante': (2, 0), 'base_lat': (2, 1), 'base_inf': (2, 2), 'base_sept': (2, 3)
     }
     mid_segments = {
-        'mid_lat': (0, 0), 'mid_ante': (0, 1), 'mid_sept': (0, 2), 'mid_inf': (0, 3)
+        'mid_ante': (1, 0), 'mid_lat': (1, 1), 'mid_inf': (1, 2), 'mid_sept': (1, 3)
     }
     apex_segments = {
-        'apex_lat': (0, 0), 'apex_ante': (0, 1), 'apex_sept': (0, 2), 'apex_inf': (0, 3)
+        'apex_ante': (0, 0), 'apex_lat': (0, 1), 'apex_inf': (0, 2), 'apex_sept': (0, 3)
     }
     
     if include_apex:
-        segment_mapping = {**apex_segments, **{k: (v[0]+1, v[1]) for k, v in mid_segments.items()},
-                         **{k: (v[0]+2, v[1]) for k, v in base_segments.items()}}
+        segment_mapping = {**apex_segments, **mid_segments, **base_segments}
     else:
-        segment_mapping = {**{k: (v[0]+1, v[1]) for k, v in mid_segments.items()},
-                         **{k: (v[0]+2, v[1]) for k, v in base_segments.items()}}
+        segment_mapping = {**mid_segments, **base_segments}
     
     # Calcul des valeurs min/max pour l'échelle de couleur
     values = []
@@ -272,9 +278,10 @@ results_df = pd.DataFrame(results)
 
 # === VISUALISATIONS ===
 # 1. Boîtes à moustaches pour la comparaison Homme vs Femme
+sexe_results = results_df[results_df['Comparaison'] == 'Hommes vs Femmes']
 boxplot_sex = create_boxplots(df, vec_cols, 'Sexe', ['H', 'F'], 
                             'Comparaison VEC Homme vs Femme',
-                            results_df[results_df['Comparaison'] == 'Hommes vs Femmes'])
+                            sexe_results)
 boxplot_sex.savefig('VEC_boxplot_sex.png')
 
 # 2. Boîtes à moustaches pour la comparaison avec/sans fibrose par sexe
@@ -285,8 +292,7 @@ df_fibrose['Groupe'] = df_fibrose.apply(
 )
 # Filtrer les résultats pour la fibrose
 fibrose_results = results_df[
-    (results_df['Comparaison'].str.contains('Fibrose vs')) & 
-    (results_df['Comparaison'].str.contains('sans Fibrose'))
+    results_df['Comparaison'].isin(['H Fibrose vs H sans Fibrose', 'F Fibrose vs F sans Fibrose'])
 ]
 boxplot_fibrose = create_boxplots(df_fibrose, vec_cols, 'Groupe', 
                                  ['H Fibrose', 'H sans Fibrose', 'F Fibrose', 'F sans Fibrose'],
@@ -302,8 +308,7 @@ df_hvg['Groupe'] = df_hvg.apply(
 )
 # Filtrer les résultats pour HVG
 hvg_results = results_df[
-    (results_df['Comparaison'].str.contains('HVG vs')) & 
-    (results_df['Comparaison'].str.contains('sans HVG'))
+    results_df['Comparaison'].isin(['H HVG vs H sans HVG', 'F HVG vs F sans HVG'])
 ]
 boxplot_hvg = create_boxplots(df_hvg, vec_cols, 'Groupe', 
                             ['H HVG', 'H sans HVG', 'F HVG', 'F sans HVG'],
